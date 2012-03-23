@@ -1,0 +1,91 @@
+#page-wrapper{
+	width: 980px;
+	margin: 0 auto;
+}
+#page{
+	padding: 20px 0 0;
+}
+#header{
+	height:140px;
+}
+#logo-title{
+	float:left;
+}
+#site-name{
+	position: absolute;
+	right: 9999px;
+}
+#header-region{
+	padding-top:48px;
+	margin-bottom:50px;
+}
+#container {
+  width: 980px;
+  margin-left: auto;
+  margin-right: auto;
+}
+#content-content{
+	clear:both;
+}
+#content-top{
+	clear: both;
+}
+#main{
+	width: 645px;
+	float:left;
+	margin: 0 10px;
+}
+#main-squeeze{
+	padding: 35px 35px 25px 25px;
+}
+#sidebar-right {
+  width: 220px;
+	margin-left: 55px;
+	float:left;
+	margin-top:5px;
+}
+#footer-menu #footer-menu-inner {
+  width: 980px;
+  height: 52px;
+  margin: 0 auto;
+  text-align: center;  
+}
+#footer {
+  margin-left: 10px;
+	padding: 20px 0;
+	clear:both;
+}
+#footer-menu {
+  clear: both;
+  width: 100%;
+}
+/* Clear Floated Elements
+----------------------------------------------------------------------------------------------------*/
+
+/* http://sonspring.com/journal/clearing-floats */
+
+.clear {
+	clear: both;
+	display: block;
+	overflow: hidden;
+	visibility: hidden;
+	width: 0;
+	height: 0;
+}
+
+/* http://perishablepress.com/press/2008/02/05/lessons-learned-concerning-the-clearfix-css-hack */
+
+.clearfix:after {
+	clear: both;
+	content: ' ';
+	display: block;
+	font-size: 0;
+	line-height: 0;
+	visibility: hidden;
+	width: 0;
+	height: 0;
+}
+
+* html .clearfix {
+	height: 1%;
+}

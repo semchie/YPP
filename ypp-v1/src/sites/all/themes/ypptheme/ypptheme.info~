@@ -1,0 +1,25 @@
+name = Youth Participatory & Politics
+description = This theme was designed and developed by Chapter Three for Youth Participatory & Politics and DMLCentral.
+core = 6.x
+version = 1.0
+engine = phptemplate
+
+stylesheets[all][] = css/widget.css
+stylesheets[all][] = css/reset.css
+stylesheets[all][] = css/drupal-basics.css
+stylesheets[all][] = css/html-elements.css
+stylesheets[all][] = css/layout.css
+stylesheets[all][] = css/ypptheme.css
+
+regions[header] = Header
+regions[right] = Right sidebar
+regions[content_top] = Content Top
+regions[content] = Content
+regions[footer] = Footer
+
+features[] = logo
+features[] = name
+features[] = favicon
+
+; Panels layouts. You can place multiple layouts under the "layouts" folder.
+plugins[panels][layouts] = layouts

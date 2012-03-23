@@ -1,0 +1,77 @@
+/* ------ PANEL: Stacked right sidebar with bricks ------ */
+
+.panel-wrap.panel-rightthreecolflex {
+    
+}
+.panel-wrap.panel-rightthreecolflex .panel-right {
+    float: left;
+    width: 25%;
+    padding: 0;
+}
+.panel-wrap.panel-rightthreecolflex .panel-main-wrap {
+   float: left;
+   width: 75%;
+   padding: 0;
+}
+.panel-wrap.panel-rightthreecolflex .panel-main-wrap .panel-wrap-inner {
+	padding: 0 0 0 10px;
+}
+.panel-wrap.panel-rightthreecolflex .panel-right .panel-inner {
+	padding: 0 10px 0 0;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap .panel-main-left,
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap .panel-main-center,
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap .panel-main-right  {
+	width: 33%;
+	float: left;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap .panel-main-right{
+    float:right;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap.main-left-row2.empty-main-center-row2.main-right-row2 .panel-main-left.row2{
+    width:66%;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap.main-left-row2.empty-main-center-row2.empty-main-right-row2 .panel-main-left.row2{
+    width:100%;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap.main-center-row2.empty-main-right-row2 .panel-main-center.row2{
+    width:66%;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap.empty-main-left-row2.main-center-row2.empty-main-right-row2 .panel-main-center.row2{
+    width:100%;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap.empty-main-left-row2.empty-main-center-row2.main-right-row2 .panel-main-right.row2{
+    width:100%;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap.main-left-row4.empty-main-center-row4.main-right-row4 .panel-main-left.row4{
+    width:66%;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap.main-left-row4.empty-main-center-row4.empty-main-right-row4 .panel-main-left.row4{
+    width:100%;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap.main-center-row4.empty-main-right-row4 .panel-main-center.row4{
+    width:66%;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap.empty-main-left-row4.main-center-row4.empty-main-right-row4 .panel-main-center.row4{
+    width:100%;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap.empty-main-left-row4.empty-main-center-row4.main-right-row4 .panel-main-right.row4{
+    width:100%;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap .panel-main-left .panel-inner {
+    padding-right: 10px;
+    margin-right: 10px;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap .panel-main-center .panel-inner {
+    padding-left: 14px;
+}
+.panel-wrap.panel-rightthreecolflex  .panel-three-col-wrap .panel-main-right .panel-inner {
+    margin-left: 10px;
+    padding-left: 10px;
+}
+.panels-dnd h2 {
+    background-image: none;
+}
+.end-of-panel{
+    clear:both;
+}

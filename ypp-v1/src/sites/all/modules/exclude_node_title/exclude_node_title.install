@@ -1,0 +1,39 @@
+<?php
+/**
+ * @file
+ * @author Gabriel Ungureanu
+ * gabriel.ungreanu@ag-prime.com
+ */
+
+/*
+ * Implementation of hook_install().
+ */
+function exclude_node_title_install() {
+  // by default all users will have permission to use exclude node title
+  db_query("UPDATE {permission} p SET p.`perm` = TRIM(LEADING ', ' FROM CONCAT(p.`perm`, ', use exclude node title'))");
+
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function exclude_node_title_uninstall() {
+  variable_del('exclude_node_title_nid_list');
+  variable_del('exclude_node_title_remove_title');
+  variable_del('exclude_node_title_content_type_values');
+}
+
+/*
+ * Implementation of hook_update_N().
+ * We need to add permission to use exclude node title to all roles that didn't had the ignore permission.
+ */
+function exclude_node_title_update_6002() {
+  $items = array();
+  $items[] = update_sql("UPDATE {permission} p
+    SET p.`perm` = CONCAT(p.`perm`, ', use exclude node title')
+    WHERE p.`perm` NOT LIKE '%ignore node title exclusions%'");
+  $items[] = update_sql("UPDATE {permission} p
+    SET p.`perm` = REPLACE(p.`perm`, ', ignore node title exclusions', '')
+    WHERE p.`perm` NOT LIKE '%ignore node title exclusions%'");
+  return $items;
+}

@@ -1,0 +1,138 @@
+#page-wrapper{
+	width: 950px;
+	margin: 0 auto;
+}
+#page{
+
+}
+#header{
+	height:120px;
+}
+#logo-title{
+	float:left;
+	padding-top: 10px;
+}
+#site-name{
+	position: absolute;
+	right: 9999px;
+}
+#header-region{
+	margin-bottom:10px;
+}
+#container {
+  width: 980px;
+  margin-left: auto;
+  margin-right: auto;
+}
+#content-content{
+	clear:both;
+}
+#content-top{
+	clear: both;
+}
+#main{
+	width: 645px;
+	float:left;
+	margin: 0 10px;
+}
+#main-squeeze{
+	padding: 35px 35px 25px 25px;
+}
+#sidebar-right {
+  width: 220px;
+	margin-left: 10px;
+	float:left;
+	margin-top:0px;
+}
+#footer-menu #footer-menu-inner {
+  width: 980px;
+  height: 52px;
+  margin: 0 auto;
+  text-align: center;  
+}
+
+#footer-wrapper {
+	position: relative;
+	clear: both;
+	padding-top: 50px;
+}
+
+#footer {
+	position: absolute;
+    color: #bbb;
+    font-size: 90%;
+    background-color: #222;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 40px;
+    left: 0px;
+    right: 0px;
+	width:100%;
+	vertical-align:bottom;
+}
+#footer-menu {
+  clear: both;
+  width: 100%;
+}
+
+
+/* for hovering text functionality.
+   taken with permission from 
+    	http://www.dynamicdrive.com/dynamicindex5/dhtmltooltip_dev.htm */
+#dhtmltooltip{
+position: absolute;
+width: 150px;
+border: 2px solid black;
+padding: 2px;
+background-color: lightyellow;
+visibility: hidden;
+z-index: 100;
+/*Remove below line to remove shadow. Below line should always appear last within this CSS*/
+filter: progid:DXImageTransform.Microsoft.Shadow(color=gray,direction=135);
+}
+
+.field-field-project-prin-inv {
+	float: left;
+	width: 45%;
+}
+
+.field-field-project-contact {
+	float: left;
+	width: 32%;
+}
+
+.field-field-project-staff {
+	float: left;
+	width: 23%
+}
+
+/* Clear Floated Elements
+----------------------------------------------------------------------------------------------------*/
+
+/* http://sonspring.com/journal/clearing-floats */
+
+.clear {
+	clear: both;
+	display: block;
+	overflow: hidden;
+	visibility: hidden;
+	width: 0;
+	height: 0;
+}
+
+/* http://perishablepress.com/press/2008/02/05/lessons-learned-concerning-the-clearfix-css-hack */
+
+.clearfix:after {
+	clear: both;
+	content: ' ';
+	display: block;
+	font-size: 0;
+	line-height: 0;
+	visibility: hidden;
+	width: 0;
+	height: 0;
+}
+
+* html .clearfix {
+	height: 1%;
+}

@@ -1,0 +1,590 @@
+<?php
+
+define('PREV_NEXT_BATCH_SIZE_DEFAULT', 200);
+define('PREV_NEXT_INDEXING_CRITERIA_DEFAULT', 'nid');
+define('PREV_NEXT_NODE_TYPE', 'prev_next_node_type_');
+define('PREV_NEXT_NUM_BLOCKS_DEFAULT', 1);
+define('PREV_NEXT_DISPLAY_DEFAULT', 1);
+define('PREV_NEXT_DISPLAY_TEXT_PREV_DEFAULT', '[title] »');
+define('PREV_NEXT_DISPLAY_TEXT_NEXT_DEFAULT', '« [title]');
+
+/**
+ * Implementation of hook_menu().
+ */
+function prev_next_menu() {
+  $items['admin/settings/prev_next'] = array(
+    'title'            => 'Prev/Next',
+    'description'      => 'Prev/Next API for nodes',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('prev_next_admin'),
+    'access arguments' => array('access administration pages'),
+  );
+  $items['admin/settings/prev_next/general'] = array(
+    'title' => 'General',
+    'weight' => 0,
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['admin/settings/prev_next/re-index'] = array(
+    'type'             => MENU_CALLBACK,
+    'title'            => 'Prev/Next reset',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('prev_next_reindex_confirm'),
+    'access arguments' => array('access administration pages'),
+  );
+
+  return $items;
+}
+
+/**
+ * Menu callback argument. Creates the prev_next administration form.
+ */
+function prev_next_admin() {
+  $form['status'] = array(
+    '#type'   => 'fieldset',
+    '#title'  => t('Indexing status'),
+  );
+
+  $max_nid = variable_get('prev_next_index_nid', 0);
+  $cond =  _prev_next_node_types_sql();
+
+  $total = db_result(db_query("SELECT COUNT(nid) FROM {node} WHERE status = 1 $cond"));
+  $completed = db_result(db_query("SELECT COUNT(nid) FROM {prev_next_node}"));
+  $remaining = max(0, $total - $completed);
+
+  $percentage = ((int)min(100, 100 * ($total - $remaining) / max(1, $total))) .'%';
+  $status = t('<p>%percentage of nodes have been indexed. There are %remaining items left to index, out of a total of %total.</p>',
+    array(
+      '%percentage' => $percentage,
+      '%remaining'  => $remaining,
+      '%total'      => $total,
+    ));
+  $status .= ($max_nid) ? t('<p>Max node ID for indexing on the next cron run: @max.</p>', array('@max' => $max_nid)) : t('<p>Existing nodes have finished prev/next indexing.</p>');
+
+  $form['status']['status'] = array(
+    '#value' => $status,
+  );
+
+  $form['status']['reindex'] = array(
+    '#type'  => 'submit',
+    '#value' => t('Re-index'),
+  );
+
+  $form['prev_next_batch_size'] = array(
+    '#title'         => t('Batch size'),
+    '#description'   => t('Number of nodes to index during each cron run.'),
+    '#type'          => 'textfield',
+    '#size'          => 6,
+    '#maxlength'     => 7,
+    '#default_value' => variable_get('prev_next_batch_size', PREV_NEXT_BATCH_SIZE_DEFAULT),
+    '#required'      => TRUE,
+  );
+
+  $form['prev_next_num_blocks'] = array(
+    '#title'         => t('Blocks'),
+    '#description'   => t('Number of blocks available.'),
+    '#type'          => 'textfield',
+    '#size'          => 2,
+    '#maxlength'     => 3,
+    '#default_value' => variable_get('prev_next_num_blocks', PREV_NEXT_NUM_BLOCKS_DEFAULT),
+    '#required'      => TRUE,
+  );
+
+  $form['node_types'] = array(
+    '#type'        => 'fieldset',
+    '#title'       => t('Content types'),
+    '#description' => t('Define settings for each content type. If none of them is included, then all of them will be.'),
+  );
+
+  foreach (node_get_types() as $type => $name) {
+
+    $form['node_types'][$type] = array(
+      '#type'         => 'fieldset',
+      '#description'  => t('Note: changing one of these values will reset the entire Prev/Next index.'),
+      '#title'        => node_get_types('name', $type),
+      '#collapsible'  => TRUE,
+      '#collapsed'    => !variable_get(PREV_NEXT_NODE_TYPE . $type, 0)
+    );
+
+    $form['node_types'][$type][PREV_NEXT_NODE_TYPE . $type] = array(
+      '#type'          => 'checkbox',
+      '#title'         => t('Include'),
+      '#default_value' => variable_get(PREV_NEXT_NODE_TYPE . $type, 0),
+    );
+    $form['node_types'][$type][PREV_NEXT_NODE_TYPE . $type . '_current'] = array(
+      '#type'          => 'hidden',
+      '#default_value' => variable_get(PREV_NEXT_NODE_TYPE . $type, 0)
+    );
+
+    $form['node_types'][$type][PREV_NEXT_NODE_TYPE . $type . '_indexing_criteria'] = array(
+      '#title'          => t('Indexing criteria'),
+      '#type'           => 'select',
+      '#options'        => array(
+        'nid'     => t('Node ID'),
+        'created' => t('Post date'),
+        'changed' => t('Updated date'),
+        'title'   => t('Title')
+      ),
+      '#default_value'  => variable_get(PREV_NEXT_NODE_TYPE . $type . '_indexing_criteria', PREV_NEXT_INDEXING_CRITERIA_DEFAULT)
+    );
+    $form['node_types'][$type][PREV_NEXT_NODE_TYPE . $type . '_indexing_criteria_current'] = array(
+      '#type'   => 'hidden',
+      '#value'  => variable_get(PREV_NEXT_NODE_TYPE . $type . '_indexing_criteria', PREV_NEXT_INDEXING_CRITERIA_DEFAULT)
+    );
+
+    $form['node_types'][$type][PREV_NEXT_NODE_TYPE . $type . '_same_type'] = array(
+      '#type'          => 'checkbox',
+      '#title'         => t('Only nodes with same content type'),
+      '#default_value' => variable_get(PREV_NEXT_NODE_TYPE . $type . '_same_type', 0),
+    );
+    $form['node_types'][$type][PREV_NEXT_NODE_TYPE . $type . '_same_type_current'] = array(
+      '#type'          => 'hidden',
+      '#default_value' => variable_get(PREV_NEXT_NODE_TYPE . $type . '_same_type', 0)
+    );
+
+  }
+
+  $form['#submit'][] = 'prev_next_admin_submit';
+
+  return system_settings_form($form);
+}
+
+/**
+ * Validate callback.
+ */
+function prev_next_admin_validate($form, &$form_state) {
+  if ($form_state['values']['op'] == t('Re-index')) {
+    drupal_goto('admin/settings/prev_next/re-index');
+  }
+
+  // Max_nid is just a markup field and should not cause a variable to be set.
+  unset($form_state['values']['max_nid']);
+
+  // The variables must be non-negative and numeric.
+  if (!is_numeric($form_state['values']['prev_next_batch_size']) || $form_state['values']['prev_next_batch_size'] <= 0) {
+    form_set_error('prev_next_batch_size', t('The batch size must be a number and greater than zero.'));
+  }
+}
+
+/**
+ * Submit callback.
+ */
+function prev_next_admin_submit($form, &$form_state) {
+  $rebuild = FALSE;
+
+  // Test sensitive values.
+  foreach (node_get_types() as $type => $name) {
+    if ($form_state['values'][PREV_NEXT_NODE_TYPE . $type . '_current'] != $form_state['values'][PREV_NEXT_NODE_TYPE . $type]
+      || $form_state['values'][PREV_NEXT_NODE_TYPE . $type . '_indexing_criteria_current'] != $form_state['values'][PREV_NEXT_NODE_TYPE . $type . '_indexing_criteria']
+      || $form_state['values'][PREV_NEXT_NODE_TYPE . $type . '_same_type_current'] != $form_state['values'][PREV_NEXT_NODE_TYPE . $type . '_same_type']
+    )
+      $rebuild = TRUE;
+  }
+
+  // If the search criterias has been changed, re-index.
+  if ($rebuild) {
+    prev_next_reindex();
+    drupal_set_message(t('The Prev/Next index will be rebuilt.'));
+  }
+  $form_state['redirect'] = 'admin/settings/prev_next';
+}
+
+function prev_next_reindex_confirm() {
+  return confirm_form(array(), t('Are you sure you want to re-index Prev/Next?'),
+    'admin/settings/prev_next', t('The entire Prev/Next index will be reset and rebuilt incrementally as cron runs. action cannot be undone.'), t('Re-index'), t('Cancel'));
+}
+
+function prev_next_reindex_confirm_submit(&$form, &$form_state) {
+  if ($form['confirm']) {
+    prev_next_reindex();
+    drupal_set_message(t('The Prev/Next index will be rebuilt.'));
+    $form_state['redirect'] = 'admin/settings/prev_next';
+  }
+}
+
+function prev_next_reindex() {
+  // Wipe the table clean
+  db_query('TRUNCATE {prev_next_node}');
+  // Get the highest nid
+  $max_nid = db_result(db_query('SELECT MAX(nid) FROM {node}'));
+  // Set the variable to that
+  variable_set('prev_next_index_nid', $max_nid);
+  if ($max_nid) {
+    drupal_set_message(t('Prev/Next will index from node %nid downward.', array('%nid' => $max_nid)));
+  }
+}
+
+/**
+ * Implementation of hook_cron().
+ */
+function prev_next_cron() {
+  $max_nid = variable_get('prev_next_index_nid', 0);
+  if ($max_nid) {
+    $batch_size = variable_get('prev_next_batch_size', PREV_NEXT_BATCH_SIZE_DEFAULT);
+    $last_nid = FALSE;
+    $cond = _prev_next_node_types_sql();
+
+    timer_start('prev_next_cron');
+    $result = db_query("SELECT nid FROM {node} WHERE nid <= %d AND status = 1 $cond ORDER BY nid DESC LIMIT %d", $max_nid, $batch_size);
+    $count = 0;
+
+    while ($row = db_fetch_object($result)) {
+      // Remove existing data for this node.
+      db_query("DELETE FROM {prev_next_node} WHERE nid = %d", $row->nid);
+
+      _prev_next_add($row->nid);
+      // Note that we have indexed at least one node.
+      $last_nid = $row->nid;
+
+      $count++;
+    }
+
+    $time = timer_read('prev_next_cron');
+
+    if ($last_nid !== FALSE) {
+      // Prepare a starting point for the next run.
+      variable_set('prev_next_index_nid', $last_nid - 1);
+    }
+    else {
+      // If all nodes have been indexed, set to zero to skip future cron runs.
+      variable_set('prev_next_index_nid', 0);
+    }
+    watchdog('prev_next', 'Indexed %count nodes in %time milliseconds.', array('%count' => $count, '%time' => $time));
+
+    $total = db_result(db_query("SELECT COUNT(nid) FROM {node} WHERE status = 1 $cond"));
+    $completed = db_result(db_query("SELECT COUNT(nid) FROM {prev_next_node}"));
+    $remaining = max(0, $total - $completed);
+    drupal_set_message(t('Indexed %count nodes for the Prev/Next index. There are %remaining items left to index.', array(
+      '%count' => $count,
+      '%remaining'  => $remaining
+    )));
+
+  }
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function prev_next_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+
+    case 'list':
+      $num_blocks = variable_get('prev_next_num_blocks', PREV_NEXT_NUM_BLOCKS_DEFAULT);
+      for ($b = 0; $b < $num_blocks ; $b++) {
+        $blocks[$b] = array(
+          'info'    => t('Prev/Next links !blocknum', array('!blocknum' => 1+$b)),
+          'status'  => 0,
+          'cache'   => BLOCK_CACHE_PER_PAGE
+        );
+      }
+      return $blocks;
+      break;
+
+    case 'configure':
+      $description = (module_exists('token')) ? 'Use the available tokens (see below) to customize the link text.' : 'The [title] token will be replaced by the actual node title.';
+
+      $form['previous'] = array(
+        '#type'         => 'fieldset',
+        '#title'        => t('Previous Node'),
+        '#collapsible'  => TRUE,
+      );
+      $form['previous']['prev_next_display_prev' . $delta] = array(
+        '#type'           => 'checkbox',
+        '#title'          => t('Display'),
+        '#default_value'  => variable_get('prev_next_display_prev' . $delta, PREV_NEXT_DISPLAY_DEFAULT),
+      );
+      $form['previous']['prev_next_display_text_prev' . $delta] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Link text'),
+        '#description'    => $description,
+        '#default_value'  => variable_get('prev_next_display_text_prev' . $delta, PREV_NEXT_DISPLAY_TEXT_PREV_DEFAULT),
+      );
+      if (module_exists('token')) {
+        $form['previous']['token_help'] = array(
+          '#title' => t('Replacement patterns'),
+          '#type' => 'fieldset',
+          '#collapsible' => TRUE,
+          '#collapsed' => TRUE,
+        );
+        $form['previous']['token_help']['help'] = array(
+          '#value' => theme('token_help', 'node'),
+        );
+      }
+
+      $form['next'] = array(
+        '#type'         => 'fieldset',
+        '#title'        => t('Next Node'),
+        '#collapsible'  => TRUE,
+      );
+      $form['next']['prev_next_display_next' . $delta] = array(
+        '#type'           => 'checkbox',
+        '#title'          => t('Display'),
+        '#default_value'  => variable_get('prev_next_display_next' . $delta, PREV_NEXT_DISPLAY_DEFAULT),
+      );
+      $form['next']['prev_next_display_text_next' . $delta] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Link text'),
+        '#description'    => $description,
+        '#default_value'  => variable_get('prev_next_display_text_next' . $delta, PREV_NEXT_DISPLAY_TEXT_NEXT_DEFAULT),
+      );
+      if (module_exists('token')) {
+        $form['next']['token_help'] = array(
+          '#title' => t('Replacement patterns'),
+          '#type' => 'fieldset',
+          '#collapsible' => TRUE,
+          '#collapsed' => TRUE,
+        );
+        $form['next']['token_help']['help'] = array(
+          '#value' => theme('token_help', 'node'),
+        );
+      }
+    return $form;
+    break;
+
+    case 'save':
+      variable_set('prev_next_display_prev' . $delta, $edit['prev_next_display_prev' . $delta]);
+      variable_set('prev_next_display_next' . $delta, $edit['prev_next_display_next' . $delta]);
+      variable_set('prev_next_display_text_prev' . $delta, $edit['prev_next_display_text_prev' . $delta]);
+      variable_set('prev_next_display_text_next' . $delta, $edit['prev_next_display_text_next' . $delta]);
+      break;
+
+    case 'view':
+      $content = '';
+      $next_display = variable_get('prev_next_display_next' . $delta, PREV_NEXT_DISPLAY_DEFAULT);
+      $next_text = variable_get('prev_next_display_text_next' . $delta, PREV_NEXT_DISPLAY_TEXT_NEXT_DEFAULT);
+      $prev_display = variable_get('prev_next_display_prev' . $delta, PREV_NEXT_DISPLAY_DEFAULT);
+      $prev_text = variable_get('prev_next_display_text_prev' . $delta, PREV_NEXT_DISPLAY_TEXT_PREV_DEFAULT);
+
+      if (arg(0) == 'node' && is_numeric(arg(1)) && !arg(2) ) {
+        $node = node_load(arg(1));
+        $n_nid = prev_next_nid($node->nid, 'next');
+        $p_nid = prev_next_nid($node->nid, 'prev');
+
+        if ($n_nid || $p_nid) {
+
+          if ($p_nid && $prev_display && $prev_text != '') {
+            $p_node = node_load($p_nid);
+            if (module_exists('token')) {
+              $link = token_replace($prev_text, 'node', $p_node);
+            }
+            else {
+              $link = str_replace('[title]', $p_node->title, $prev_text);
+            }
+            $options = array('html' => TRUE);
+            $content .= '<li class="prev-next-link-prev">' . l($link, "node/$p_nid", $options) . '</li>';
+          }
+
+          if ($n_nid && $next_display && $next_text != '') {
+            $n_node = node_load($n_nid);
+            if (module_exists('token')) {
+              $link = token_replace($next_text, 'node', $n_node);
+            }
+            else {
+              $link = str_replace('[title]', $n_node->title, $next_text);
+            }
+            $options = array('html' => TRUE);
+            $content .= '<li class="prev-next-link-next">' . l($link, "node/$n_nid", $options) . '</li>';
+          }
+
+          $block = array(
+            'subject' => t('Prev/Next links'),
+            'content' => '<ul class="prev-next-links">' . $content . '</ul>'
+          );
+
+        }
+
+      }
+
+    return $block;
+
+  }
+
+}
+
+/**
+ * Create or update the prev_next records.
+ */
+function _prev_next_add($nid) {
+  $node_type = db_result(db_query("SELECT type FROM {node} WHERE nid = %d LIMIT 1", $nid));
+  $search_criteria = variable_get(PREV_NEXT_NODE_TYPE . $node_type . '_indexing_criteria', PREV_NEXT_INDEXING_CRITERIA_DEFAULT);
+
+  $criteria_value = db_result(db_query("SELECT %s FROM {node} WHERE nid = %d LIMIT 1", $search_criteria, $nid));
+
+  $cond = _prev_next_node_types_sql($node_type);
+
+  $next_nid = db_result(db_query("SELECT nid FROM {node} WHERE %s > '%s' AND status = 1 $cond ORDER BY %s ASC LIMIT 1",
+    $search_criteria, $criteria_value, $search_criteria));
+
+  $prev_nid = db_result(db_query("SELECT nid FROM {node} WHERE %s < '%s' AND status = 1 $cond ORDER BY %s DESC LIMIT 1",
+    $search_criteria, $criteria_value, $search_criteria));
+
+  // Update the node-level data
+  $exists = db_result(db_query('SELECT COUNT(*) FROM {prev_next_node} WHERE nid = %d', $nid));
+  if ($exists) {
+    db_query('UPDATE {prev_next_node} SET prev_nid = %d, next_nid = %d, changed = %d WHERE nid = %d',
+      $prev_nid, $next_nid, time(), $nid);
+  }
+  else {
+    db_query('INSERT INTO {prev_next_node} (prev_nid, next_nid, changed, nid) VALUES (%d, %d, %d, %d)',
+      $prev_nid, $next_nid, time(), $nid);
+  }
+
+  // Update the other nodes pointing to this node
+  foreach (node_get_types() as $type => $name) {
+    if (variable_get(PREV_NEXT_NODE_TYPE . $type, 0)) {
+      $search_criteria = variable_get(PREV_NEXT_NODE_TYPE . $type . '_indexing_criteria', PREV_NEXT_INDEXING_CRITERIA_DEFAULT);
+      $criteria_value = db_result(db_query("SELECT %s FROM {node} WHERE nid = %d LIMIT 1", $search_criteria, $nid));
+      $cond = _prev_next_node_types_sql($node_type);
+      $next_nid = db_result(db_query("SELECT nid FROM {node} WHERE %s < '%s' AND status = 1 $cond ORDER BY %s DESC LIMIT 1",
+        $search_criteria, $criteria_value, $search_criteria));
+      if ($next_nid) {
+        db_query("UPDATE {prev_next_node} SET next_nid = %d WHERE nid = %d", $nid, $next_nid);
+      }
+      $prev_nid = db_result(db_query("SELECT nid FROM {node} WHERE %s > '%s' AND status = 1 $cond ORDER BY %s ASC LIMIT 1",
+        $search_criteria, $criteria_value, $search_criteria));
+      if ($prev_nid) {
+        db_query("UPDATE {prev_next_node} SET prev_nid = %d WHERE nid = %d", $nid, $prev_nid);
+      }
+    }
+  }
+
+}
+
+/**
+ * Update the prev_next records.
+ */
+function _prev_next_modify($nid) {
+  // Find out if any other nodes point to this node and update them
+  _prev_next_modify_pointing_nodes($nid);
+  // Then update this one
+  _prev_next_add($nid);
+}
+
+/**
+ * Delete from the prev_next records.
+ */
+function _prev_next_remove($nid) {
+  // Find if there is an entry for this node
+  $node = db_fetch_object(db_query("SELECT nid, prev_nid, next_nid, changed FROM {prev_next_node} WHERE nid = %d", $nid));
+  if ($node) {
+    // Delete the data for this node
+    db_query("DELETE FROM {prev_next_node} WHERE nid = %d", $nid);
+  }
+  // Find out if any other nodes point to this node and update them
+  _prev_next_modify_pointing_nodes($nid);
+}
+
+/**
+ * Update other nodes pointing to a particular node
+ */
+function _prev_next_modify_pointing_nodes($nid) {
+  // First for previous
+  $result = db_query("SELECT nid FROM {prev_next_node} WHERE prev_nid = %d", $nid);
+  while ($prev_row = db_fetch_object($result)) _prev_next_add($prev_row->nid);
+
+  // Then for next
+  $result = db_query("SELECT nid FROM {prev_next_node} WHERE next_nid = %d", $nid);
+  while ($next_row = db_fetch_object($result)) _prev_next_add($next_row->nid);
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function prev_next_nodeapi(&$node, $op) {
+  $found = FALSE;
+  foreach (_prev_next_node_types() as $type) {
+    if ($node->type == $type) {
+      $found = TRUE;
+      break;
+    }
+  }
+  if (!$found) {
+    return;
+  }
+
+  switch ($op) {
+    case 'insert':
+      _prev_next_add($node->nid);
+      break;
+
+    case 'update':
+      _prev_next_modify($node->nid);
+      break;
+
+    case 'delete':
+      _prev_next_remove($node->nid);
+      break;
+  }
+}
+
+/*
+ * Callable API function to get the next/prev nid of a given nid
+ */
+function prev_next_nid($nid, $op = 'next') {
+  foreach (module_implements('prev_next_nid') as $module) {
+    $function = $module . '_prev_next_nid';
+    $ret = $function($nid, $op);
+    if ($ret !== FALSE) {
+      // If the function returns FALSE, keep trying other methods
+      return $ret;
+    }
+  }
+
+  if ($op == 'prev') {
+    return prev_next_nid_prev($nid);
+  }
+  elseif ($op == 'next') {
+    return prev_next_nid_next($nid);
+  }
+  else {
+    return 0;
+  }
+}
+
+function prev_next_nid_next($nid) {
+  return db_result(db_query("SELECT next_nid FROM {prev_next_node} WHERE nid = %d", $nid));
+}
+
+function prev_next_nid_prev($nid) {
+  return db_result(db_query("SELECT prev_nid FROM {prev_next_node} WHERE nid = %d", $nid));
+}
+
+/*
+ * Helper function to return an array of node types to index
+ */
+function _prev_next_node_types() {
+  $types = array();
+  foreach (node_get_types() as $type => $name) {
+    if (variable_get(PREV_NEXT_NODE_TYPE . $type, 0)) {
+      $types[] = $type ;
+    }
+  }
+
+  return $types;
+}
+
+/*
+ * Helper function to return a SQL clause for types to be indexed
+ */
+function _prev_next_node_types_sql($node_type = '') {
+
+  $same_type = variable_get(PREV_NEXT_NODE_TYPE . $node_type . '_same_type', 0);
+
+  if (!$same_type) {
+
+    $types = _prev_next_node_types();
+
+    $quoted_types = array();
+    foreach (_prev_next_node_types() as $type) {
+      $quoted_types[] = "'" . $type . "'";
+    }
+    $cond = '';
+    if (count($types)) {
+      $cond  = ' AND type IN (' . implode(',', $quoted_types) . ')';
+    }
+
+  }
+  else $cond = " AND type = '" . $node_type . "'";
+
+  return $cond;
+}

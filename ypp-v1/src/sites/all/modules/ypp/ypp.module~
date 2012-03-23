@@ -1,0 +1,56 @@
+<?php
+
+function ypp_menu() {
+         $items = array();
+         $items['jftest'] = array(
+           'title' => t('Test Event page'),
+           'page callback' => 'ypp_print_events',
+           'access callback' =>TRUE,
+           'access arguments' => array('access administration menu'),
+           'type' => MENU_CALLBACK
+         );
+	 return $items;
+}
+function ypp_print_events() {
+  $events = ypp_list_events();
+  if(count($events) > 0) {
+    print '<pre>'; print_r($events); print '</pre>';
+  } else {
+    print 'none';
+  }
+    
+}
+function ypp_list_events() {
+  db_set_active('dmlcentral');
+  $today = date('Y-m-d');
+
+  $q = db_query("SELECT n.nid AS nid,
+                  n.title AS title,
+                  REPLACE(d.field_event_date_value, 'T', ' ') AS date,
+                  n.type AS type,
+                  n.vid AS vid,
+                  nr.teaser AS teaser,
+                  nr.format AS format,
+		  nr.body AS body
+                  FROM node n
+                  LEFT JOIN content_type_event d ON n.vid = d.vid
+                  LEFT JOIN node_revisions nr ON n.vid = nr.vid
+                  WHERE n.status <> 0 
+		  AND n.type in ('event')
+		  AND REPLACE(d.field_event_date_value, 'T', ' ') > '%s'
+                  ORDER BY date ASC", $today);
+
+  while($r = db_fetch_array($q)) {
+    $event[$r['nid']]['title'] = $r['title'];
+    $event[$r['nid']]['date'] = $r['date'];
+    $event[$r['nid']]['type'] = $r['type'];
+    $event[$r['nid']]['vid'] = $r['vid'];
+    $event[$r['nid']]['teaser'] = $r['teaser'];
+    $event[$r['nid']]['format'] = $r['format'];
+    $event[$r['nid']]['body'] = $r['body'];
+  }
+
+
+  db_set_active('default');
+  return $event;
+}

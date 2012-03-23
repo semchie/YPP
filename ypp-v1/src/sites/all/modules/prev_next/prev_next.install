@@ -1,0 +1,44 @@
+<?php
+
+
+/**
+ * @file
+ * The (un)install and update code for the prev_next module.
+ *
+ * @ingroup prev_next
+ */
+
+function prev_next_install() {
+  drupal_install_schema('prev_next');
+}
+
+function prev_next_uninstall() {
+  drupal_uninstall_schema('prev_next');
+  db_query("DELETE FROM {variable} WHERE name LIKE '%s%%'", 'prev_next');
+}
+
+function prev_next_enable() {
+  $max_nid = db_result(db_query('SELECT MAX(nid) FROM {node}'));
+  variable_set('prev_next_index_nid', $max_nid);
+  if ($max_nid) {
+    drupal_set_message(t('Prev/Next will index from node %nid downward.', array('%nid' => $max_nid)));
+  }
+}
+
+function prev_next_schema() {
+  $schema['prev_next_node'] = array(
+    'description' => 'Prev/Next node',
+    'fields' => array(
+      'nid'      => array( 'type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,),
+      'prev_nid' => array( 'type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,),
+      'next_nid' => array( 'type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,),
+      'changed'  => array( 'type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE,),
+    ),
+    'primary key' => array('nid'),
+    'indexes' => array(
+      'prev_nid' => array('prev_nid'),
+      'next_nid' => array('next_nid'),
+    ),
+  );
+  return $schema;
+}

@@ -1,0 +1,36 @@
+body {
+  background-color: #EEEEEE;
+  color: #2C2C2C;
+  font-family: "Helvetica", Arial, serif;
+  font-size: 13px;
+  line-height: 20px;
+}
+a {
+  color: #EB218D;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+p {
+  margin-bottom: 20px;
+}
+h1, h2, h3, h4 {
+  color: #2C2C2C;
+  line-height: 25px;
+  font-weight: normal;
+  font-family: Georgia, serif;
+}
+h1 {
+  font-size: 24px;
+  line-height: 30px;
+}
+h2 {
+  font-size: 18px;
+}
+h3 {
+  font-size: 16px;
+}
+h4 {
+  font-size: 14px
+}
